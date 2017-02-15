@@ -1,10 +1,11 @@
+---
 title: "Reproducible Research: Peer Assessment 1"
 output: 
-  html_document:  
-    keep_md: true  
-Author: Patrick Hyland  
-Date: February 15, 2017  
-=======================
+  html_document:
+    keep_md: true
+Author: Patrick Hyland
+Date: February 15, 2017
+---
 
 This is an R Markdown file
 
