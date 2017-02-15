@@ -1,0 +1,100 @@
+title: "Reproducible Research: Peer Assessment 1"
+output: 
+  html_document:  
+    keep_md: true  
+Author: Patrick Hyland  
+Date: February 15, 2017  
+=======================
+
+This is an R Markdown file
+
+This is code to that reads and process the data into a data table.
+It also parses and cleans the data
+```{r}
+library(data.table)
+setwd("C:/Users/phyland/Desktop/RWorkingDirectory/RepData_PeerAssessment1")
+activity <- fread("activity.csv", na.strings = "NA")
+table(is.na(activity$steps))
+```
+Assigns the columns as date, then appends a new column with day of week
+```{r}
+activity$date <- as.Date(activity$date,"%Y-%m-%d")
+activity$dow <- weekdays(activity$date)
+```
+Checks the frequency of NAs
+```{r}
+table(is.na(activity$steps))
+```
+Uses a sql package to get sum of steps by date and plots in histogram
+```{r}
+library(sqldf)
+totperday2 <- sqldf("SELECT sum(steps) as tot,date FROM activity GROUP BY date")
+
+hist(totperday2$tot, xlab= "stepcount", main="Total steps by day", col="purple")
+```
+Mean and median number of steps taken each day
+```{r}
+mean(totperday2$tot,na.rm=T)
+median(totperday2$tot,na.rm=T)
+```
+uses sql package again to get average steps by interval and plots in histogram
+```{r}
+avgperint <- sqldf("SELECT avg(steps) as avg, interval FROM activity GROUP BY interval")
+
+with(avgperint,plot(avgperint$interval,avgperint$avg,type="l", col = "red",
+                    xlab= "interval", ylab="average steps",main= "average steps across intervals"))
+```
+Finds max value and returns its corresponding interval
+```{r}
+maxint <- avgperint[avgperint$avg == max(avgperint$avg),2]
+maxint
+```
+This first checks to see how many NAs, copies the data table, then imputes.  
+Imputing is done through a loop which first determines if there is a NA value.  
+If so, it imputes the average steps for its corresponding interval into the new data frame.
+```{r}
+sum(is.na(activity$steps))
+
+newactivity <- activity
+
+for (i in 1:length(activity$steps)) {
+ 
+  if (is.na(activity$steps[i])) {
+    newactivity$steps[i] <- avgperint$avg[avgperint$interval == activity$interval[i]]
+  }
+}
+```
+New sql statement and Histogram of the total number of steps taken each day,
+after missing values are imputed
+```{r}
+totperday3 <- sqldf("SELECT sum(steps) as tot,date FROM newactivity GROUP BY date")
+hist(totperday3$tot,xlab= "stepcount", main="Total steps by day", col="orange")
+```
+Mean and median then recalculated
+```{r}
+mean(totperday3$tot)
+median(totperday3$tot)
+```
+Code that re-creates the day of week, and factors on whether it's a weekend or weekday.
+```{r}
+newactivity$dow <- weekdays(newactivity$date)
+
+typeofday <- as.factor(c('Weekend','Weekday'))
+
+newactivity$type<- NA
+for (i in 1:length(newactivity$type)) {
+  if(newactivity$dow[i] %in% c('Saturday','Sunday')) {
+    newactivity$type[i] <- "Weekend"
+} else {
+  newactivity$type[i] <- "Weekday"
+}
+}  
+```
+sql statement to make average number of steps by interval and type, then plotted using lattice
+```{r}
+library(lattice)
+library(sqldf)
+newsql <- sqldf("SELECT avg(steps) as avg, interval,type FROM newactivity GROUP BY  interval,type")
+
+xyplot(avg ~ interval | type, data = newsql, layout = c(1,2),type="l")
+```
